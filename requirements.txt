@@ -12,6 +12,3 @@ black
 fastapi
 uvicorn
 pydantic
-torch
-torchvision
-tensorflow
