@@ -12,3 +12,4 @@ black
 fastapi
 uvicorn
 pydantic
+imbalanced-learn
