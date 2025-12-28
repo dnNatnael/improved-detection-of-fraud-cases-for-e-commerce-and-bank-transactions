@@ -13,6 +13,7 @@
 - [Project Structure](#project-structure)
 - [Setup Instructions](#setup-instructions)
 - [How to Run](#how-to-run)
+- [Usage Examples](#usage-examples)
 - [Workflow](#workflow)
 - [Results Organization](#results-organization)
 - [Key Features](#key-features)
@@ -95,7 +96,8 @@ improved-detection-of-fraud-cases-for-e-commerce-and-bank-transactions/
 │   └── eda-fraud-data.ipynb  # Main EDA and preprocessing notebook
 │
 ├── scripts/                   # Python scripts for automation
-│   └── preprocess_data.py    # Main preprocessing pipeline script
+│   ├── train_fraud_models.py # Model training and evaluation pipeline
+│   └── generate_report.py    # Report generation utilities
 │
 ├── src/                       # Reusable Python modules
 │   ├── data_loading.py       # Data loading with error handling
@@ -105,15 +107,21 @@ improved-detection-of-fraud-cases-for-e-commerce-and-bank-transactions/
 │   └── preprocessing.py      # Preprocessing pipeline (scaling, encoding, SMOTE)
 │
 ├── tests/                     # Unit tests
-│   ├── (future test files)
+│   ├── test_project_structure.py
 │   └── __init__.py
 │
 ├── models/                    # Saved trained models
-│   └── (future: .pkl or .joblib files)
+│   └── *.pkl, *.joblib       # Trained model files
 │
-├── requirements.txt           # Python dependencies
-├── .gitignore                # Git ignore rules
-└── README.md                 # This file
+├── reports/                   # Model evaluation reports and analysis
+│   └── (analysis documents and summaries)
+│
+├── temp_charts/              # Generated visualizations
+│   └── *.png                 # Charts, plots, and graphs
+│
+├── requirements.txt          # Python dependencies
+├── .gitignore                 # Git ignore rules
+└── README.md                  # This file
 ```
 
 ---
@@ -154,6 +162,8 @@ pip install -r requirements.txt
 - `seaborn` - Statistical visualization
 - `scikit-learn` - Machine learning algorithms
 - `imbalanced-learn` - SMOTE and class balancing
+- `xgboost` - Gradient boosting ensemble models
+- `joblib` - Model serialization
 - `jupyter` - Interactive notebooks
 
 ### 4. Verify Installation
@@ -181,14 +191,196 @@ python -c "import pandas, numpy, sklearn, imblearn; print('✓ All packages inst
    - Click `Kernel` → `Restart & Run All`
    - Or run cells sequentially with `Shift + Enter`
 
-### Option 2: Run Python Scripts (Future: For Production)
+### Option 2: Train Fraud Detection Models
+
+**Train models on both datasets:**
+```bash
+python scripts/train_fraud_models.py
+```
+
+This script will:
+- Load both `creditcard.csv` and `Fraud_Data.csv`
+- Perform stratified train-test split
+- Train Logistic Regression (baseline) and XGBoost (ensemble) models
+- Perform 5-fold stratified cross-validation
+- Compare models and select the best one
+- Generate visualizations and save trained models
+
+**Output locations:**
+- Trained models: `models/`
+- Visualizations: `temp_charts/`
+- Console: Detailed metrics and recommendations
+
+### Option 3: Use Individual Components
+
+**Load and explore data:**
+```python
+from src.data_loading import load_data
+
+# Load a dataset
+df = load_data('data/raw/creditcard.csv')
+print(df.head())
+```
+
+**Preprocess data:**
+```python
+from src.preprocessing import train_test_split_data, scale_features
+
+# Split data
+X_train, X_test, y_train, y_test = train_test_split_data(
+    df, target_col='Class', test_size=0.2
+)
+
+# Scale features
+X_train_scaled, X_test_scaled, scaler = scale_features(X_train, X_test)
+```
+
+**Train a custom model:**
+```python
+from scripts.train_fraud_models import FraudDetectionModelTrainer
+
+trainer = FraudDetectionModelTrainer(
+    dataset_path='data/raw/creditcard.csv',
+    target_col='Class',
+    dataset_name='Credit Card'
+)
+trainer.stratified_train_test_split()
+trainer.train_baseline_model()
+```
+
+---
+
+## 💻 Usage Examples
+
+### Example 1: Complete Model Training Pipeline
+
+Train models on both datasets with full evaluation:
 
 ```bash
-# Example: Future training script
-python scripts/train_model.py --dataset fraud_data --model xgboost
+# Activate virtual environment (if using one)
+venv\Scripts\activate  # Windows
+# source venv/bin/activate  # Linux/Mac
 
-# Example: Future evaluation script
-python scripts/evaluate_model.py --model fraud_model.pkl
+# Run the complete training pipeline
+python scripts/train_fraud_models.py
+```
+
+**What happens:**
+- Loads `data/raw/creditcard.csv` and `data/raw/Fraud_Data.csv`
+- Performs stratified train-test split (80-20)
+- Trains Logistic Regression (baseline) and XGBoost (ensemble) models
+- Runs 5-fold stratified cross-validation
+- Generates confusion matrices, ROC curves, and PR curves
+- Compares models and saves the best one to `models/`
+
+### Example 2: Programmatic Model Training
+
+Use the training class in your own scripts:
+
+```python
+from scripts.train_fraud_models import FraudDetectionModelTrainer
+
+# Initialize trainer for credit card dataset
+trainer = FraudDetectionModelTrainer(
+    dataset_path='data/raw/creditcard.csv',
+    target_col='Class',
+    dataset_name='Credit Card',
+    random_state=42
+)
+
+# Step 1: Prepare data with stratified split
+trainer.stratified_train_test_split(test_size=0.2)
+
+# Step 2: Train baseline model
+baseline_model, baseline_metrics = trainer.train_baseline_model()
+
+# Step 3: Train ensemble model
+ensemble_model, ensemble_metrics = trainer.train_ensemble_model(model_type='xgboost')
+
+# Step 4: Cross-validation
+cv_results = trainer.perform_cross_validation(k_folds=5)
+
+# Step 5: Compare and select best model
+best_name, best_model, comparison_df = trainer.compare_models()
+
+# Save the best model
+trainer.save_model(best_model, best_name)
+```
+
+### Example 3: Data Preprocessing Workflow
+
+Use individual preprocessing components:
+
+```python
+from src.data_loading import load_data
+from src.preprocessing import train_test_split_data, scale_features, handle_class_imbalance
+
+# Load data
+df = load_data('data/raw/Fraud_Data.csv')
+
+# Split with stratification
+X_train, X_test, y_train, y_test = train_test_split_data(
+    df, target_col='class', test_size=0.2, stratify=True
+)
+
+# Scale features
+X_train_scaled, X_test_scaled, scaler = scale_features(X_train, X_test)
+
+# Handle class imbalance with SMOTE (on training data only!)
+X_balanced, y_balanced = handle_class_imbalance(
+    X_train_scaled, y_train, method='smote', random_state=42
+)
+```
+
+### Example 4: Load and Use a Trained Model
+
+```python
+import joblib
+import pandas as pd
+from sklearn.preprocessing import StandardScaler
+
+# Load trained model
+model = joblib.load('models/credit_card_xgboost.pkl')
+
+# Load scaler (if saved separately)
+# scaler = joblib.load('models/scaler.pkl')
+
+# Prepare new transaction data
+new_transaction = pd.DataFrame({
+    'V1': [1.2],
+    'V2': [-0.5],
+    # ... other features
+})
+
+# Scale features (use the same scaler from training)
+# new_transaction_scaled = scaler.transform(new_transaction)
+
+# Predict
+prediction = model.predict(new_transaction)
+probability = model.predict_proba(new_transaction)
+
+print(f"Prediction: {'Fraud' if prediction[0] == 1 else 'Legitimate'}")
+print(f"Fraud Probability: {probability[0][1]:.4f}")
+```
+
+### Example 5: Quick Data Exploration
+
+```python
+from src.data_loading import load_data
+from src.eda_utils import analyze_class_distribution
+
+# Load dataset
+df = load_data('data/raw/creditcard.csv')
+
+# Analyze class distribution
+class_dist = analyze_class_distribution(
+    df, target_col='Class', dataset_name='Credit Card', visualize=True
+)
+
+# Check basic statistics
+print(df.describe())
+print(f"\nMissing values:\n{df.isnull().sum()}")
+print(f"\nClass distribution:\n{df['Class'].value_counts()}")
 ```
 
 ---
@@ -250,21 +442,34 @@ python scripts/evaluate_model.py --model fraud_model.pkl
 - `data/processed/fraud_X_test.csv`
 - `data/processed/fraud_y_test.csv`
 
-### Phase 4: Model Training (Future)
-**Location**: `scripts/train_model.py` (To be implemented)
+### Phase 4: Model Training ✅
+**Location**: `scripts/train_fraud_models.py`
 
-- Logistic Regression (baseline)
-- Random Forest
-- XGBoost
-- Neural Networks
+1. **Baseline Model**: Logistic Regression with `class_weight='balanced'`
+2. **Ensemble Model**: XGBoost with hyperparameter tuning
+3. **Stratified K-Fold Cross-Validation** (k=5)
+4. **Model Comparison**: Side-by-side performance evaluation
+5. **Model Selection**: Best model based on AUC-PR and interpretability
 
-### Phase 5: Model Evaluation (Future)
-**Location**: `scripts/evaluate_model.py` (To be implemented)
+**Run:**
+```bash
+python scripts/train_fraud_models.py
+```
+
+**Output**:
+- Trained models saved in `models/`
+- Evaluation metrics and visualizations in `temp_charts/`
+- Comprehensive performance reports in console
+
+### Phase 5: Model Evaluation ✅
+**Integrated in**: `scripts/train_fraud_models.py`
 
 - Confusion Matrix
 - Precision, Recall, F1-Score
 - ROC-AUC Curve
-- PR-AUC (important for imbalanced data)
+- PR-AUC (Area Under Precision-Recall Curve) - primary metric for imbalanced data
+- Cross-validation results with mean ± std
+- Model comparison and recommendations
 
 ---
 
@@ -336,6 +541,8 @@ All preprocessed data is saved in `data/processed/` with clear naming convention
 - **numpy** 1.23+ - Numerical computing
 - **scikit-learn** 1.2+ - Machine learning algorithms and preprocessing
 - **imbalanced-learn** 0.10+ - Handling class imbalance
+- **xgboost** 2.0+ - Gradient boosting for ensemble models
+- **joblib** 1.3+ - Model serialization and persistence
 
 ### Visualization
 - **matplotlib** 3.7+ - Static plots and charts
@@ -344,7 +551,7 @@ All preprocessed data is saved in `data/processed/` with clear naming convention
 ### Development Tools
 - **Jupyter Notebook** - Interactive exploration
 - **Git** - Version control
-- **pytest** (future) - Unit testing
+- **pytest** - Unit testing framework
 
 ---
 
@@ -443,19 +650,26 @@ cd improved-detection-of-fraud-cases-for-e-commerce-and-bank-transactions
 # 2. Set up environment
 python -m venv venv
 venv\Scripts\activate  # Windows
+# source venv/bin/activate  # Linux/Mac
 pip install -r requirements.txt
 
-# 3. Run EDA notebook
+# 3. Run EDA notebook (optional - for exploration)
 jupyter notebook notebooks/eda-fraud-data.ipynb
 
-# 4. Check processed data
-ls data/processed/
+# 4. Train fraud detection models
+python scripts/train_fraud_models.py
+
+# 5. Check results
+# - Models: models/
+# - Visualizations: temp_charts/
+# - Processed data: data/processed/
 ```
 
-**Next Steps**: 
-1. Run the EDA notebook to familiarize yourself with the data
-2. Review the processed datasets in `data/processed/`
-3. Start building your fraud detection models!
+**Typical Workflow**: 
+1. **Explore Data**: Run `notebooks/eda-fraud-data.ipynb` to understand the datasets
+2. **Train Models**: Run `python scripts/train_fraud_models.py` to build and evaluate models
+3. **Review Results**: Check `temp_charts/` for visualizations and console output for metrics
+4. **Deploy**: Use saved models from `models/` for production predictions
 
 ---
 
