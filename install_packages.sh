@@ -16,3 +16,4 @@ echo "  python3 -c \"import pandas, numpy, sklearn, matplotlib, seaborn, imblear
 echo ""
 echo "Note: If you're using Jupyter, you may need to restart the kernel after installation."
 
+
