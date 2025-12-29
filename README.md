@@ -18,6 +18,7 @@
 - [Results Organization](#results-organization)
 - [Key Features](#key-features)
 - [Technologies Used](#technologies-used)
+- [Model Interpretability with SHAP](#model-interpretability-with-shap)
 - [Contributing](#contributing)
 
 ---
@@ -97,6 +98,7 @@ improved-detection-of-fraud-cases-for-e-commerce-and-bank-transactions/
 │
 ├── scripts/                   # Python scripts for automation
 │   ├── train_fraud_models.py # Model training and evaluation pipeline
+│   ├── shap_model_explainability.py # SHAP explainability analysis
 │   └── generate_report.py    # Report generation utilities
 │
 ├── src/                       # Reusable Python modules
@@ -117,9 +119,10 @@ improved-detection-of-fraud-cases-for-e-commerce-and-bank-transactions/
 │   └── (analysis documents and summaries)
 │
 ├── temp_charts/              # Generated visualizations
-│   └── *.png                 # Charts, plots, and graphs
+│   └── *.png, *.html         # Charts, plots, graphs, and interactive SHAP plots
 │
 ├── requirements.txt          # Python dependencies
+├── SHAP_ANALYSIS_GUIDE.md   # Detailed SHAP explainability guide
 ├── .gitignore                 # Git ignore rules
 └── README.md                  # This file
 ```
@@ -163,6 +166,7 @@ pip install -r requirements.txt
 - `scikit-learn` - Machine learning algorithms
 - `imbalanced-learn` - SMOTE and class balancing
 - `xgboost` - Gradient boosting ensemble models
+- `shap` - Model explainability and interpretability
 - `joblib` - Model serialization
 - `jupyter` - Interactive notebooks
 
@@ -211,7 +215,30 @@ This script will:
 - Visualizations: `temp_charts/`
 - Console: Detailed metrics and recommendations
 
-### Option 3: Use Individual Components
+### Option 3: SHAP Model Explainability Analysis
+
+**Interpret model predictions with SHAP:**
+```bash
+python scripts/shap_model_explainability.py
+```
+
+This script provides comprehensive model interpretability:
+- Extracts and visualizes built-in feature importance
+- Performs global SHAP analysis (overall feature impact)
+- Generates local explanations for individual predictions (TP, FP, FN cases)
+- Compares SHAP importance with built-in importance
+- Generates actionable business recommendations
+
+**Output locations:**
+- Feature importance plots: `temp_charts/builtin_feature_importance_*.png`
+- SHAP summary plots: `temp_charts/shap_summary_plot_*.png`
+- Interactive force plots: `temp_charts/shap_force_plot_*.html`
+- Comparison visualizations: `temp_charts/importance_comparison_*.png`
+- Console: Business recommendations and insights
+
+**See `SHAP_ANALYSIS_GUIDE.md` for detailed documentation.**
+
+### Option 4: Use Individual Components
 
 **Load and explore data:**
 ```python
@@ -363,7 +390,51 @@ print(f"Prediction: {'Fraud' if prediction[0] == 1 else 'Legitimate'}")
 print(f"Fraud Probability: {probability[0][1]:.4f}")
 ```
 
-### Example 5: Quick Data Exploration
+### Example 5: SHAP Model Explainability
+
+Understand why your model makes specific predictions:
+
+```python
+from scripts.shap_model_explainability import SHAPFraudExplainer
+import joblib
+import pandas as pd
+from sklearn.preprocessing import StandardScaler
+
+# Load trained model
+model = joblib.load('models/credit_card_xgboost.pkl')
+
+# Load and prepare data (same as training)
+df = load_data('data/raw/creditcard.csv')
+X = df.drop('Class', axis=1)
+y = df['Class']
+X_train, X_test, y_train, y_test = train_test_split(
+    X, y, test_size=0.2, random_state=42, stratify=y
+)
+
+# Scale features
+scaler = StandardScaler()
+X_train_scaled = scaler.fit_transform(X_train)
+X_test_scaled = scaler.transform(X_test)
+
+# Initialize SHAP explainer
+explainer = SHAPFraudExplainer(
+    model=model,
+    X_train=X_train_scaled,
+    X_test=X_test_scaled,
+    y_test=y_test,
+    feature_names=list(X.columns),
+    dataset_name="Credit Card Fraud"
+)
+
+# Perform analysis
+explainer.initialize_shap_explainer()
+explainer.compute_shap_values()
+shap_importance = explainer.global_shap_analysis()
+cases = explainer.local_shap_analysis()
+recommendations = explainer.generate_business_recommendations(shap_importance, cases)
+```
+
+### Example 6: Quick Data Exploration
 
 ```python
 from src.data_loading import load_data
@@ -471,6 +542,50 @@ python scripts/train_fraud_models.py
 - Cross-validation results with mean ± std
 - Model comparison and recommendations
 
+### Phase 6: Model Explainability & Interpretability ✅
+**Location**: `scripts/shap_model_explainability.py`
+
+1. **Feature Importance Baseline**
+   - Extract model's built-in feature importance
+   - Visualize top 10 most important features
+   - Understand limitations of built-in importance
+
+2. **Global SHAP Analysis**
+   - SHAP summary plots showing overall feature impact
+   - Identify features that increase vs decrease fraud probability
+   - Mean absolute SHAP values for feature ranking
+
+3. **Local SHAP Analysis**
+   - Generate force plots for critical prediction cases:
+     - ✅ True Positive (correctly detected fraud)
+     - ⚠️ False Positive (legitimate transaction flagged)
+     - ❌ False Negative (fraud missed)
+   - Explain individual feature contributions to specific predictions
+
+4. **Interpretation & Insights**
+   - Compare SHAP importance with built-in importance
+   - Identify top 5 most influential fraud drivers
+   - Explain unexpected or counterintuitive patterns
+
+5. **Business Recommendations**
+   - Generate 3-5 actionable recommendations
+   - Each linked to specific SHAP insights
+   - Ready for fraud prevention team implementation
+
+**Run:**
+```bash
+python scripts/shap_model_explainability.py
+```
+
+**Output**:
+- Feature importance visualizations: `temp_charts/builtin_feature_importance_*.png`
+- SHAP summary plots: `temp_charts/shap_summary_plot_*.png`
+- Interactive force plots: `temp_charts/shap_force_plot_*.html`
+- Comparison visualizations: `temp_charts/importance_comparison_*.png`
+- Business recommendations printed to console
+
+**See `SHAP_ANALYSIS_GUIDE.md` for comprehensive documentation.**
+
 ---
 
 ## 📈 Results Organization
@@ -532,6 +647,13 @@ All preprocessed data is saved in `data/processed/` with clear naming convention
 - ✅ **Geolocation analysis** (fraud by country)
 - ✅ **Clear documentation** of findings
 
+### Model Interpretability
+- ✅ **SHAP explainability** for understanding model decisions
+- ✅ **Global and local explanations** for comprehensive insights
+- ✅ **Feature importance analysis** comparing multiple methods
+- ✅ **Actionable business recommendations** based on SHAP insights
+- ✅ **Interactive visualizations** for stakeholder presentations
+
 ---
 
 ## 🛠 Technologies Used
@@ -542,16 +664,100 @@ All preprocessed data is saved in `data/processed/` with clear naming convention
 - **scikit-learn** 1.2+ - Machine learning algorithms and preprocessing
 - **imbalanced-learn** 0.10+ - Handling class imbalance
 - **xgboost** 2.0+ - Gradient boosting for ensemble models
+- **shap** 0.42+ - Model explainability and SHAP value computation
 - **joblib** 1.3+ - Model serialization and persistence
 
 ### Visualization
 - **matplotlib** 3.7+ - Static plots and charts
 - **seaborn** 0.12+ - Statistical data visualization
+- **SHAP plots** - Interactive force plots and summary visualizations
 
 ### Development Tools
 - **Jupyter Notebook** - Interactive exploration
 - **Git** - Version control
 - **pytest** - Unit testing framework
+
+---
+
+## 🔍 Model Interpretability with SHAP
+
+Understanding why a model makes specific predictions is crucial for fraud detection systems. This project includes comprehensive SHAP (SHapley Additive exPlanations) analysis to provide both global and local explanations.
+
+### What is SHAP?
+
+SHAP is a unified framework for explaining model predictions by assigning each feature an importance value for a particular prediction. It's based on game theory and provides theoretically justified feature attributions.
+
+### Key Capabilities
+
+#### 1. **Global Explainability**
+- **SHAP Summary Plots**: Visualize how each feature impacts fraud predictions overall
+- **Feature Impact Analysis**: Identify which features increase vs decrease fraud probability
+- **Top Fraud Drivers**: Rank features by their importance in fraud detection
+
+#### 2. **Local Explainability (Individual Predictions)**
+- **Force Plots**: Interactive visualizations showing how specific feature values push predictions toward fraud or legitimate
+- **Case Analysis**: Detailed explanations for:
+  - ✅ **True Positives**: Why fraud was correctly detected
+  - ⚠️ **False Positives**: Why legitimate transactions were flagged (helps reduce false alarms)
+  - ❌ **False Negatives**: Why fraud was missed (critical for improving detection)
+
+#### 3. **Business Insights**
+- **Actionable Recommendations**: 3-5 specific recommendations based on SHAP insights
+- **Feature Comparison**: Compare SHAP importance with built-in model importance
+- **Pattern Discovery**: Identify unexpected relationships and counterintuitive patterns
+
+### Quick Start
+
+```bash
+# Run SHAP analysis (requires trained models)
+python scripts/shap_model_explainability.py
+```
+
+### Output Files
+
+All SHAP visualizations are saved in `temp_charts/`:
+
+| File Type | Description |
+|-----------|-------------|
+| `builtin_feature_importance_*.png` | Model's built-in feature importance |
+| `shap_summary_plot_*.png` | Global SHAP summary showing feature impact |
+| `shap_importance_*.png` | Mean absolute SHAP values ranking |
+| `importance_comparison_*.png` | Comparison of built-in vs SHAP importance |
+| `shap_force_plot_TP_*.html` | Interactive force plot for True Positive case |
+| `shap_force_plot_FP_*.html` | Interactive force plot for False Positive case |
+| `shap_force_plot_FN_*.html` | Interactive force plot for False Negative case |
+
+**Note**: Open HTML files in a web browser for interactive exploration.
+
+### Example Business Recommendations
+
+Based on SHAP analysis, you might receive recommendations like:
+
+1. **Transaction Velocity Monitoring**
+   - *Recommendation*: Transactions occurring within X hours of account creation should trigger additional verification.
+   - *Justification*: SHAP analysis shows that `account_age < X` strongly increases fraud probability.
+
+2. **Geographic Risk Scoring**
+   - *Recommendation*: Implement country-based risk thresholds for high-risk regions.
+   - *Justification*: SHAP values reveal strong geographic patterns in fraud probability.
+
+3. **Amount-Based Verification**
+   - *Recommendation*: Implement tiered verification based on transaction amount thresholds.
+   - *Justification*: SHAP analysis identifies transaction amount as a key fraud driver with non-linear impact.
+
+### Understanding SHAP Values
+
+- **Positive SHAP Value**: Feature value increases fraud probability
+- **Negative SHAP Value**: Feature value decreases fraud probability
+- **Absolute SHAP Value**: Magnitude of feature's impact on prediction
+
+### Customization
+
+Adjust analysis parameters in the script:
+- `sample_size`: Background samples for explainer (default: 1000)
+- `max_samples`: Test samples to explain (default: 500)
+
+For detailed documentation, see [`SHAP_ANALYSIS_GUIDE.md`](SHAP_ANALYSIS_GUIDE.md).
 
 ---
 
@@ -659,17 +865,23 @@ jupyter notebook notebooks/eda-fraud-data.ipynb
 # 4. Train fraud detection models
 python scripts/train_fraud_models.py
 
-# 5. Check results
+# 5. Analyze model interpretability (optional but recommended)
+python scripts/shap_model_explainability.py
+
+# 6. Check results
 # - Models: models/
 # - Visualizations: temp_charts/
 # - Processed data: data/processed/
+# - SHAP plots: temp_charts/shap_*.png and *.html
 ```
 
 **Typical Workflow**: 
 1. **Explore Data**: Run `notebooks/eda-fraud-data.ipynb` to understand the datasets
 2. **Train Models**: Run `python scripts/train_fraud_models.py` to build and evaluate models
-3. **Review Results**: Check `temp_charts/` for visualizations and console output for metrics
-4. **Deploy**: Use saved models from `models/` for production predictions
+3. **Interpret Models**: Run `python scripts/shap_model_explainability.py` to understand model decisions
+4. **Review Results**: Check `temp_charts/` for visualizations and console output for metrics
+5. **Implement Recommendations**: Use SHAP insights to develop fraud prevention rules
+6. **Deploy**: Use saved models from `models/` for production predictions
 
 ---
 
